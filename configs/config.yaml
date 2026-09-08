@@ -1,0 +1,12 @@
+defaults:
+  - model: ouro_2.6b_thinking
+  - agent: default
+  - search: mock
+  - eval: default
+  - _self_
+
+hydra:
+  run:
+    dir: outputs/logs/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  job:
+    chdir: false

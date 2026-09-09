@@ -1,0 +1,43 @@
+diff --git a/verl/trainer/ppo/metric_utils.py b/verl/trainer/ppo/metric_utils.py
+index 876d6907..38256c25 100644
+--- a/verl/trainer/ppo/metric_utils.py
++++ b/verl/trainer/ppo/metric_utils.py
+@@ -163,2 +163,3 @@ def compute_data_metrics(batch: DataProto, use_critic: bool = True) -> dict[str,
+         "critic/score/min": score_min,
++        "outcome/accuracy": score_mean,
+         # reward
+@@ -224 +225,11 @@ def compute_data_metrics(batch: DataProto, use_critic: bool = True) -> dict[str,
++    if "num_search_turns" in batch.non_tensor_batch:
++        num_search_turns = batch.non_tensor_batch["num_search_turns"].astype(float)
++        metrics["search/turns_mean"] = num_search_turns.mean()
++        metrics["search/action_rate"] = (num_search_turns > 0).mean()
++
++    if "format_valid" in batch.non_tensor_batch:
++        metrics["outcome/format_valid_rate"] = batch.non_tensor_batch[
++            "format_valid"
++        ].astype(float).mean()
++
+     return metrics
+diff --git a/verl/workers/fsdp_workers.py b/verl/workers/fsdp_workers.py
+index a31c575e..30d820bb 100644
+--- a/verl/workers/fsdp_workers.py
++++ b/verl/workers/fsdp_workers.py
+@@ -320,2 +320,5 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
+         )
++        from ouro_search.verl.model_hooks import prepare_ouro_hf_config
++
++        is_ouro = prepare_ouro_hf_config(actor_model_config)
+         # TODO: VL models use VisionAttention, which directly uses flash_attention in transformers>=4.53
+@@ -405 +408,8 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
++            if is_ouro:
++                from ouro_search.verl.model_hooks import freeze_ouro_exit_gate
++
++                gate_states = freeze_ouro_exit_gate(actor_module)
++                if self.rank == 0:
++                    print(f"[Ouro/veRL] total_ut_steps=3, exit_gate_requires_grad={gate_states}")
++
+             if enable_gradient_checkpointing:
+@@ -421,2 +431,2 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
+-        self.use_orig_params = fsdp_config.get("use_orig_params", False)
++        self.use_orig_params = fsdp_config.get("use_orig_params", False) or is_ouro
+         if self.config.actor.get("freeze_vision_tower", False):

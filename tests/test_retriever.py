@@ -1,6 +1,7 @@
 import httpx
 import pytest
 
+from retriever import e5_server
 from retriever.server import app
 
 
@@ -34,3 +35,36 @@ async def test_mock_search_rejects_blank_query() -> None:
         response = await client.post("/search", json={"query": "   "})
 
     assert response.status_code == 422
+
+
+def test_e5_search_contract_without_loading_artifacts(monkeypatch) -> None:
+    class FakeBackend:
+        def search(self, query: str, top_k: int) -> list[dict[str, object]]:
+            return [
+                {
+                    "id": "wiki-1",
+                    "title": "Hamlet",
+                    "text": "Hamlet was written by William Shakespeare.",
+                    "score": 0.9,
+                    "rank": 0,
+                }
+            ][:top_k]
+
+        def search_batch(
+            self, queries: list[str], top_k: int
+        ) -> list[list[dict[str, object]]]:
+            return [self.search(query, top_k) for query in queries]
+
+    monkeypatch.setattr(e5_server, "backend", FakeBackend)
+    payload = e5_server.search(
+        e5_server.SearchRequest(query="Who wrote Hamlet?", top_k=3)
+    )
+    batch_payload = e5_server.search_batch(
+        e5_server.BatchSearchRequest(
+            queries=["Who wrote Hamlet?", "Hamlet author"], top_k=3
+        )
+    )
+
+    assert payload["query"] == "Who wrote Hamlet?"
+    assert payload["documents"][0]["title"] == "Hamlet"
+    assert len(batch_payload["results"]) == 2

@@ -28,9 +28,10 @@ checkpoints/
 huggingface/
 hf_cache/
 .cache/huggingface/
-data/
+/data/
 datasets/
 indexes/
+third_party/
 
 .idea/
 .vscode/

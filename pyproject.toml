@@ -19,6 +19,23 @@ dependencies = [
     "wandb>=0.20,<1",
 ]
 
+[project.optional-dependencies]
+retriever = [
+    "faiss-cpu==1.13.2",
+]
+train = [
+    "accelerate>=1.8,<2",
+    "codetiming>=1.4,<2",
+    "peft>=0.16,<1",
+    "ray[default]>=2.41,<3",
+    "tensordict>=0.8,<=0.10,!=0.9.0",
+    "torchdata>=0.11,<1",
+    "vllm==0.10.0",
+]
+
+[project.entry-points."vllm.general_plugins"]
+ouro_search = "ouro_search.vllm_model.registry:register_ouro_vllm"
+
 [dependency-groups]
 dev = [
     "pytest>=8.3,<9",

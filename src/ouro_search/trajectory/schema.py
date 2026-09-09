@@ -28,6 +28,9 @@ class Trajectory:
     question: str
     prediction: str
     num_search_turns: int
+    reference_answer: str = ""
+    answer_aliases: list[str] = field(default_factory=list)
+    reward: float | None = None
     turns: list[TurnRecord] = field(default_factory=list)
     termination_reason: str = ""
     final_model_output: str = ""
@@ -37,6 +40,9 @@ class Trajectory:
             "id": self.id,
             "question": self.question,
             "prediction": self.prediction,
+            "reference_answer": self.reference_answer,
+            "answer_aliases": self.answer_aliases,
+            "reward": self.reward,
             "num_search_turns": self.num_search_turns,
             "turns": [turn.to_dict() for turn in self.turns],
             "termination_reason": self.termination_reason,

@@ -63,6 +63,8 @@ class AgentRunner:
         question: str,
         *,
         sample_id: str = "sample-0",
+        reference_answer: str = "",
+        answer_aliases: list[str] | None = None,
         loop_steps_by_turn: dict[int, int] | None = None,
     ) -> Trajectory:
         if not question.strip():
@@ -122,6 +124,8 @@ class AgentRunner:
             question=question.strip(),
             prediction=prediction,
             num_search_turns=len(turns),
+            reference_answer=reference_answer,
+            answer_aliases=list(answer_aliases or ([reference_answer] if reference_answer else [])),
             turns=turns,
             termination_reason=termination_reason,
             final_model_output=final_model_output,

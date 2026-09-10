@@ -3,13 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-SEARCH_R1_PROMPT = """Answer the given question. You must conduct reasoning inside \
-<think> and </think> first every time you get new information. After reasoning, if you \
-find you lack some knowledge, you can call a search engine by <search> query </search> \
-and it will return the top searched results between <information> and </information>. \
-You can search at most four times. If you find no further external knowledge needed, \
-you can directly provide the answer inside <answer> and </answer>, without detailed \
-illustrations. For example, <answer> Beijing </answer>. Question: {question}\n"""
+from ouro_search.agent.protocol import SEARCH_R1_PROMPT
 
 
 def _aliases(example: Mapping[str, Any]) -> list[str]:

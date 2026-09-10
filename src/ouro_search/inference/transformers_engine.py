@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ouro_search.agent.protocol import split_agent_prompt
 from ouro_search.models.ouro import OuroModel
 
 
@@ -17,15 +18,24 @@ class TransformersEngine:
         self.use_chat_template = use_chat_template
         self.use_cache = use_cache
 
+    def count_tokens(self, text: str) -> int:
+        return len(self.model.tokenizer.encode(text, add_special_tokens=False))
+
+    def truncate_text(self, text: str, max_tokens: int) -> str:
+        token_ids = self.model.tokenizer.encode(text, add_special_tokens=False)[:max_tokens]
+        return self.model.tokenizer.decode(token_ids, skip_special_tokens=False)
+
     def _format_prompt(self, prompt: str) -> str:
+        initial_prompt, continuation = split_agent_prompt(prompt)
         tokenizer = self.model.tokenizer
         if not self.use_chat_template or not tokenizer.chat_template:
-            return prompt
-        return tokenizer.apply_chat_template(
-            [{"role": "user", "content": prompt}],
+            return initial_prompt + continuation
+        rendered = tokenizer.apply_chat_template(
+            [{"role": "user", "content": initial_prompt}],
             tokenize=False,
             add_generation_prompt=True,
         )
+        return rendered + continuation
 
     def generate(
         self,

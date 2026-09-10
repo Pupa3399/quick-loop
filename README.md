@@ -80,6 +80,26 @@ Actual prepared counts in `/data2/wuguanting/quick_loop/data/searchr1` are:
 | HotpotQA | 90,447 | 7,405 | 0 | 97,852 |
 | Combined | 169,615 | 11,015 | 0 | 180,630 |
 
+## Search-R1 GRPO Baselines
+
+The official Search-R1 v0.2 outcome-only GRPO checkpoints for Qwen2.5-3B and
+Qwen2.5-7B are pinned by immutable revision and downloaded only through `hf-mirror.com`:
+
+```bash
+HF_ENDPOINT=https://hf-mirror.com uv run --no-sync python \
+  scripts/download_searchr1_baselines.py
+```
+
+Both baselines, Ouro R3, and Ouro R4 share `scripts/evaluate_agent.py`. Select one of
+`searchr1_qwen2_5_3b_grpo_v0_2`, `searchr1_qwen2_5_7b_grpo_v0_2`,
+`ouro_2_6b_r3`, or `ouro_2_6b_r4` through Hydra's `model=` override. They use the same
+Search-R1 prompt/protocol, vLLM backend, E5 + Wiki18 + FAISS Flat HTTP Retriever,
+top-k=3, four-search limit, 3000-token aggregate response budget, outcome-only EM, and
+trajectory schema. Each model keeps its native tokenizer chat template.
+
+Artifact revisions, paths, and the complete configuration comparison are in
+[`docs/searchr1_baselines.md`](docs/searchr1_baselines.md).
+
 ## E5 Wikipedia-2018 Retriever
 
 The retriever pins `intfloat/e5-base-v2` at revision
@@ -176,21 +196,19 @@ Logged metrics include reward/EM accuracy, search action rate, mean search turns
 validity, response length, KL, policy loss, and gradient norm. The launcher refuses to
 disturb GPUs occupied by another job.
 
-On the current server all eight A800s remained occupied at 100% utilization; checks
-observed only 21-38GB free per GPU. The 1-, 5-, and 20-step launchers were each actually
-invoked and refused before model loading; consequently optimizer updates, veRL-managed
-rollout, checkpoints, and metric trends are not yet verified. Standalone Ouro R3
-vLLM/KV inference and the
-official-model veRL hook are verified; the latter restored 144 effective cache layers to
-48 shared HF layers, kept R3, froze both real gate parameters, and left the trunk
-trainable.
+The 1-, 5-, and 20-step acceptance runs completed on eight A800s. Every rank reported a
+nonzero Ouro trunk gradient and parameter update while both real exit-gate parameters
+remained frozen with no gradient. The 20-step checkpoint, including model, optimizer,
+extra state, config, and tokenizer, is under
+`outputs/checkpoints/grpo-r3-20-step/global_step_20`. These short runs validate plumbing;
+they are not a replacement for the long comparison training stage.
 
 ## Quality Checks
 
 ```bash
 uv lock --check
-uv run --no-sync ruff check .
-uv run --no-sync pytest
+uv run ruff check .
+uv run pytest
 ```
 
 Default tests are offline and do not download Ouro, Wikipedia, or the FAISS index.

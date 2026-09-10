@@ -1,12 +1,20 @@
 diff --git a/verl/trainer/ppo/metric_utils.py b/verl/trainer/ppo/metric_utils.py
-index 876d6907..38256c25 100644
+index 876d6907..d00f9c83 100644
 --- a/verl/trainer/ppo/metric_utils.py
 +++ b/verl/trainer/ppo/metric_utils.py
-@@ -163,2 +163,3 @@ def compute_data_metrics(batch: DataProto, use_critic: bool = True) -> dict[str,
-         "critic/score/min": score_min,
+@@ -119,0 +120,2 @@ def compute_data_metrics(batch: DataProto, use_critic: bool = True) -> dict[str,
++    valid_response_mask = batch.batch["attention_mask"][:, -max_response_length:].bool()
++    information_length = (valid_response_mask.sum(-1) - response_mask.sum(-1)).float()
+@@ -163,0 +166 @@ def compute_data_metrics(batch: DataProto, use_critic: bool = True) -> dict[str,
 +        "outcome/accuracy": score_mean,
-         # reward
-@@ -224 +225,11 @@ def compute_data_metrics(batch: DataProto, use_critic: bool = True) -> dict[str,
+@@ -189,0 +193,2 @@ def compute_data_metrics(batch: DataProto, use_critic: bool = True) -> dict[str,
++        "response_length/p50": torch.quantile(response_length, 0.50).detach().item(),
++        "response_length/p95": torch.quantile(response_length, 0.95).detach().item(),
+@@ -203,0 +209,3 @@ def compute_data_metrics(batch: DataProto, use_critic: bool = True) -> dict[str,
++        # Valid response tokens inserted by the retriever and excluded from policy loss.
++        "information_length/mean": torch.mean(information_length).detach().item(),
++        "information_length/max": torch.max(information_length).detach().item(),
+@@ -223,0 +232,10 @@ def compute_data_metrics(batch: DataProto, use_critic: bool = True) -> dict[str,
 +    if "num_search_turns" in batch.non_tensor_batch:
 +        num_search_turns = batch.non_tensor_batch["num_search_turns"].astype(float)
 +        metrics["search/turns_mean"] = num_search_turns.mean()
@@ -17,18 +25,58 @@ index 876d6907..38256c25 100644
 +            "format_valid"
 +        ].astype(float).mean()
 +
-     return metrics
+diff --git a/verl/utils/import_utils.py b/verl/utils/import_utils.py
+index fc75541e..ac4a6ad3 100644
+--- a/verl/utils/import_utils.py
++++ b/verl/utils/import_utils.py
+@@ -22,0 +23 @@ import warnings
++from collections.abc import Iterable
+@@ -75 +76 @@ def import_external_libs(external_libs=None):
+-    if not isinstance(external_libs, list):
++    if isinstance(external_libs, str) or not isinstance(external_libs, Iterable):
+@@ -76,0 +78,2 @@ def import_external_libs(external_libs=None):
++    else:
++        external_libs = list(external_libs)
+diff --git a/verl/workers/actor/dp_actor.py b/verl/workers/actor/dp_actor.py
+index f7823310..2bde2b58 100644
+--- a/verl/workers/actor/dp_actor.py
++++ b/verl/workers/actor/dp_actor.py
+@@ -277,0 +278,7 @@ class DataParallelPPOActor(BasePPOActor):
++        from ouro_search.verl.model_hooks import (
++            capture_ouro_update_evidence,
++            ouro_parameter_was_updated,
++        )
++
++        ouro_evidence = capture_ouro_update_evidence(self.actor_module)
++
+@@ -293,0 +301,9 @@ class DataParallelPPOActor(BasePPOActor):
++        if ouro_evidence is not None:
++            print(
++                "[Ouro/acceptance] "
++                f"rank={torch.distributed.get_rank()}, "
++                f"exit_gate_requires_grad=False, exit_gate_grad_is_none=True, "
++                f"trunk_grad_nonzero={ouro_evidence.trunk_grad_nonzero}, "
++                f"parameter={ouro_evidence.parameter_name}, "
++                f"parameter_updated={ouro_parameter_was_updated(ouro_evidence)}"
++            )
 diff --git a/verl/workers/fsdp_workers.py b/verl/workers/fsdp_workers.py
-index a31c575e..30d820bb 100644
+index a31c575e..f25ff9de 100644
 --- a/verl/workers/fsdp_workers.py
 +++ b/verl/workers/fsdp_workers.py
-@@ -320,2 +320,5 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
-         )
+@@ -317,0 +318,3 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
++        attn_implementation = override_model_config.get(
++            "attn_implementation", "flash_attention_2"
++        )
+@@ -319 +322,3 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
+-            local_path, trust_remote_code=trust_remote_code, attn_implementation="flash_attention_2"
++            local_path,
++            trust_remote_code=trust_remote_code,
++            attn_implementation=attn_implementation,
+@@ -320,0 +326,3 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
 +        from ouro_search.verl.model_hooks import prepare_ouro_hf_config
 +
 +        is_ouro = prepare_ouro_hf_config(actor_model_config)
-         # TODO: VL models use VisionAttention, which directly uses flash_attention in transformers>=4.53
-@@ -405 +408,8 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
+@@ -404,0 +413,7 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
 +            if is_ouro:
 +                from ouro_search.verl.model_hooks import freeze_ouro_exit_gate
 +
@@ -36,8 +84,28 @@ index a31c575e..30d820bb 100644
 +                if self.rank == 0:
 +                    print(f"[Ouro/veRL] total_ut_steps=3, exit_gate_requires_grad={gate_states}")
 +
-             if enable_gradient_checkpointing:
-@@ -421,2 +431,2 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
+@@ -421 +436 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
 -        self.use_orig_params = fsdp_config.get("use_orig_params", False)
 +        self.use_orig_params = fsdp_config.get("use_orig_params", False) or is_ouro
-         if self.config.actor.get("freeze_vision_tower", False):
+diff --git a/verl/workers/rollout/vllm_rollout/vllm_async_server.py b/verl/workers/rollout/vllm_rollout/vllm_async_server.py
+index 5d4f2f59..54320aac 100644
+--- a/verl/workers/rollout/vllm_rollout/vllm_async_server.py
++++ b/verl/workers/rollout/vllm_rollout/vllm_async_server.py
+@@ -42,0 +43 @@ from vllm.v1.executor.abstract import Executor
++from ouro_search.vllm_model.config import stable_worker_vllm_config
+@@ -53,0 +55,9 @@ logger.setLevel(logging.INFO)
++def _make_sampling_params(context_max_tokens: int, sampling_params: dict[str, Any]) -> SamplingParams:
++    sampling_params = dict(sampling_params)
++    requested_max_tokens = int(sampling_params.pop("max_tokens", context_max_tokens))
++    return SamplingParams(
++        max_tokens=min(context_max_tokens, requested_max_tokens),
++        **sampling_params,
++    )
++
++
+@@ -73 +83 @@ class ExternalZeroMQDistributedExecutor(Executor):
+-            vllm_config=self.vllm_config,
++            vllm_config=stable_worker_vllm_config(self.vllm_config),
+@@ -352 +362 @@ class vLLMHttpServer:
+-        sampling_params = SamplingParams(max_tokens=max_tokens, **sampling_params)
++        sampling_params = _make_sampling_params(max_tokens, sampling_params)

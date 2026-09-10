@@ -1,5 +1,6 @@
 retriever_url: http://127.0.0.1:8000
 top_k: 3
+timeout_seconds: 120.0
 model_name: intfloat/e5-base-v2
 model_revision: f52bf8ec8c7124536f0efb74aca902b2995e5bcd
 index_path: /data2/wuguanting/quick_loop/data/wiki18/e5_Flat.index

@@ -5,26 +5,18 @@ from collections.abc import Sequence
 from ouro_search.search.types import Document
 from ouro_search.trajectory.schema import TurnRecord
 
-SYSTEM_INSTRUCTION = """Answer the question by reasoning and, when necessary, searching.
-Use exactly one of these action formats after your reasoning:
+SEARCH_R1_PROMPT = """Answer the given question. You must conduct reasoning inside \
+<think> and </think> first every time you get new information. After reasoning, if you \
+find you lack some knowledge, you can call a search engine by <search> query </search> \
+and it will return the top searched results between <information> and </information>. \
+You can search at most four times. If you find no further external knowledge needed, \
+you can directly provide the answer inside <answer> and </answer>, without detailed \
+illustrations. For example, <answer> Beijing </answer>. Question: {question}\n"""
 
-<think>
-your reasoning
-</think>
-<search>
-a concise search query
-</search>
-
-or, when enough evidence is available:
-
-<think>
-your reasoning
-</think>
-<answer>
-your final answer
-</answer>
-
-Never emit both <search> and <answer> in the same response."""
+# Inference engines remove this separator before tokenization. It lets them apply a
+# tokenizer chat template once to the original user prompt, then append search history
+# as the same assistant generation stream used by Search-R1 training.
+PROMPT_CONTINUATION_SEPARATOR = "\n<|ouro_search_continuation|>\n"
 
 
 def format_information(documents: Sequence[Document]) -> str:
@@ -38,9 +30,15 @@ def format_information(documents: Sequence[Document]) -> str:
 
 
 def build_agent_prompt(question: str, turns: Sequence[TurnRecord]) -> str:
-    parts = [SYSTEM_INSTRUCTION, f"Question:\n{question}"]
-    for turn in turns:
-        parts.append(f"Assistant search action:\n{turn.model_output}")
-        parts.append(turn.information)
-    parts.append("Produce the next search action or the final answer now.")
-    return "\n\n".join(parts)
+    initial_prompt = SEARCH_R1_PROMPT.format(question=question)
+    if not turns:
+        return initial_prompt
+    continuation = "".join(
+        f"{turn.model_output}\n{turn.information}\n" for turn in turns
+    )
+    return initial_prompt + PROMPT_CONTINUATION_SEPARATOR + continuation
+
+
+def split_agent_prompt(prompt: str) -> tuple[str, str]:
+    initial_prompt, separator, continuation = prompt.partition(PROMPT_CONTINUATION_SEPARATOR)
+    return initial_prompt, continuation if separator else ""

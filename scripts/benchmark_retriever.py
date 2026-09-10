@@ -10,6 +10,17 @@ import httpx
 import pyarrow.parquet as pq
 
 
+def percentile(values: list[float], percentile: float) -> float:
+    if not values:
+        raise ValueError("cannot compute a percentile of an empty sample")
+    ordered = sorted(values)
+    position = (len(ordered) - 1) * percentile
+    lower = int(position)
+    upper = min(lower + 1, len(ordered) - 1)
+    fraction = position - lower
+    return ordered[lower] + (ordered[upper] - ordered[lower]) * fraction
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Benchmark 100 HTTP retrieval queries")
     parser.add_argument("--url", default="http://127.0.0.1:8000")
@@ -50,6 +61,7 @@ def main() -> None:
         "http_requests": len(request_latencies),
         "mean_latency_ms": statistics.fmean(per_query_latencies) * 1000,
         "p50_latency_ms": statistics.median(per_query_latencies) * 1000,
+        "p95_latency_ms": percentile(per_query_latencies, 0.95) * 1000,
         "mean_request_latency_ms": statistics.fmean(request_latencies) * 1000,
         "qps": len(per_query_latencies) / elapsed,
         "elapsed_seconds": elapsed,

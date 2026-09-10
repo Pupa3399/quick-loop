@@ -66,6 +66,20 @@ def test_agent_search_then_answer_with_zero_based_schedule() -> None:
     assert engine.loop_steps == [3, 4, 3]
     assert search_client.queries == ["query one", "query two"]
     assert trajectory.termination_reason == "answer"
+    assert trajectory.reward == 0.0
+
+
+def test_agent_records_exact_match_reward() -> None:
+    engine = ScriptedEngine(outputs=["<think>done</think><answer>Shakespeare</answer>"])
+    runner = AgentRunner(engine, StubSearchClient())
+
+    trajectory = runner.run(
+        "Who wrote Hamlet?",
+        reference_answer="William Shakespeare",
+        answer_aliases=["Shakespeare", "William Shakespeare"],
+    )
+
+    assert trajectory.reward == 1.0
 
 
 def test_agent_stops_at_search_turn_limit() -> None:

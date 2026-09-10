@@ -41,7 +41,6 @@ actor:
   entropy_coefficient: 0.0  # veRL default used by Search-R1
   fsdp:
     param_offload: true  # Search-R1 original
-    grad_offload: true  # Search-R1 original
     optimizer_offload: true  # Search-R1 original
 
 rollout:

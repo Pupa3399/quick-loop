@@ -26,11 +26,10 @@ actor_rollout_ref:
     trust_remote_code: true
     override_config:
       total_ut_steps: 3
+      attn_implementation: sdpa
     enable_gradient_checkpointing: true
     use_remove_padding: false
-    external_lib:
-      - ouro_search.vllm_model.registry
-      - ouro_search.verl.model_hooks
+    external_lib: ouro_search.verl.external_libs
   actor:
     optim:
       lr: 5.0e-7
@@ -43,7 +42,6 @@ actor_rollout_ref:
     entropy_coeff: 0.0
     fsdp_config:
       param_offload: true
-      grad_offload: true
       optimizer_offload: true
   rollout:
     name: vllm

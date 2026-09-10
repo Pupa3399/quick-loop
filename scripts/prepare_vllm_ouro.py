@@ -13,11 +13,12 @@ MODEL_REVISION = "f1edd81e7ac41355db670500ceaf204e0f73af68"
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Create an R3 vLLM view of Ouro")
+    parser = argparse.ArgumentParser(description="Create a fixed-depth vLLM view of Ouro")
+    parser.add_argument("--loop-steps", type=int, choices=(3, 4), default=3)
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("/data2/wuguanting/quick_loop/data/vllm-ouro-r3"),
+        default=None,
     )
     parser.add_argument("--cache-dir", type=Path, default=Path(".cache/huggingface"))
     args = parser.parse_args()
@@ -34,26 +35,29 @@ def main() -> None:
     original_config = json.loads((snapshot / "config.json").read_text(encoding="utf-8"))
     vllm_config = dict(original_config)
     logical_layers = int(vllm_config["num_hidden_layers"])
-    loop_steps = 3
+    loop_steps = args.loop_steps
     vllm_config["ouro_num_hidden_layers"] = logical_layers
     vllm_config["num_hidden_layers"] = logical_layers * loop_steps
     vllm_config["total_ut_steps"] = loop_steps
     vllm_config["early_exit_threshold"] = 1.0
 
-    args.output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir = args.output_dir or Path(
+        f"/data2/wuguanting/quick_loop/data/vllm-ouro-r{loop_steps}"
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
     for source in snapshot.iterdir():
         if source.name == "config.json":
             continue
-        destination = args.output_dir / source.name
+        destination = output_dir / source.name
         if not destination.exists():
             destination.symlink_to(source.resolve())
-    (args.output_dir / "config.ouro-original.json").write_text(
+    (output_dir / "config.ouro-original.json").write_text(
         json.dumps(original_config, indent=2) + "\n", encoding="utf-8"
     )
-    (args.output_dir / "config.json").write_text(
+    (output_dir / "config.json").write_text(
         json.dumps(vllm_config, indent=2) + "\n", encoding="utf-8"
     )
-    print(f"prepared={args.output_dir}")
+    print(f"prepared={output_dir}")
     print(f"logical_layers={logical_layers} effective_cache_layers={logical_layers * loop_steps}")
 
 

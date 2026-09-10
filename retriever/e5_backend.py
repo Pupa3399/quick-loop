@@ -21,6 +21,8 @@ class E5RetrieverConfig:
     query_max_length: int = 256
     batch_size: int = 64
     faiss_gpu: bool = False
+    faiss_device: int = 0
+    faiss_use_float16: bool = False
     cache_dir: str | None = None
 
 
@@ -51,14 +53,43 @@ class E5Wiki18Retriever:
             torch_dtype=torch_dtype,
         ).to(self.device)
         self.model.eval()
-        self.index = faiss.read_index(str(config.index_path))
+        cpu_index = faiss.read_index(str(config.index_path))
+        self.faiss_gpu_memory_bytes = 0
+        self.faiss_index_device = "cpu"
+        self.faiss_index_precision = "float32"
+        self._gpu_resources: Any | None = None
         if config.faiss_gpu:
-            if not hasattr(faiss, "index_cpu_to_all_gpus"):
+            if not hasattr(faiss, "index_cpu_to_gpu"):
                 raise RuntimeError("faiss_gpu=true requires a GPU-enabled FAISS build")
-            options = faiss.GpuMultipleClonerOptions()
-            options.useFloat16 = True
-            options.shard = True
-            self.index = faiss.index_cpu_to_all_gpus(self.index, co=options)
+            available_gpus = int(faiss.get_num_gpus())
+            if not 0 <= config.faiss_device < available_gpus:
+                raise RuntimeError(
+                    f"FAISS GPU {config.faiss_device} is unavailable; found {available_gpus} GPU(s)"
+                )
+            gpu_device = torch.device(f"cuda:{config.faiss_device}")
+            torch.cuda.synchronize(gpu_device)
+            free_before, _ = torch.cuda.mem_get_info(gpu_device)
+            resources = faiss.StandardGpuResources()
+            options = faiss.GpuClonerOptions()
+            options.useFloat16 = config.faiss_use_float16
+            self.index = faiss.index_cpu_to_gpu(
+                resources,
+                config.faiss_device,
+                cpu_index,
+                options,
+            )
+            del cpu_index
+            torch.cuda.synchronize(gpu_device)
+            free_after, _ = torch.cuda.mem_get_info(gpu_device)
+            self.faiss_gpu_memory_bytes = max(0, free_before - free_after)
+            self.faiss_index_device = f"cuda:{config.faiss_device}"
+            self.faiss_index_precision = (
+                "float16" if config.faiss_use_float16 else "float32"
+            )
+            # FAISS GPU indices require their StandardGpuResources owner to stay alive.
+            self._gpu_resources = resources
+        else:
+            self.index = cpu_index
         self.corpus = load_dataset(
             "json",
             data_files=str(config.corpus_path),

@@ -21,7 +21,7 @@ dependencies = [
 
 [project.optional-dependencies]
 retriever = [
-    "faiss-cpu==1.13.2",
+    "faiss-gpu-cu12==1.13.2",
 ]
 train = [
     "accelerate>=1.8,<2",

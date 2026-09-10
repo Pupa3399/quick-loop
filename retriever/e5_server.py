@@ -53,6 +53,8 @@ def backend() -> E5Wiki18Retriever:
             device=os.environ.get("OURO_RETRIEVER_DEVICE", "cuda:0"),
             dtype=os.environ.get("OURO_RETRIEVER_DTYPE", "float16"),
             faiss_gpu=os.environ.get("OURO_FAISS_GPU", "0") == "1",
+            faiss_device=int(os.environ.get("OURO_FAISS_DEVICE", "0")),
+            faiss_use_float16=os.environ.get("OURO_FAISS_USE_FLOAT16", "0") == "1",
             cache_dir=os.environ.get("HF_HOME"),
         )
     )
@@ -80,4 +82,12 @@ def search_batch(request: BatchSearchRequest) -> dict[str, object]:
 @app.get("/health")
 def health() -> dict[str, object]:
     instance = backend()
-    return {"status": "ok", "index_size": int(instance.index.ntotal)}
+    return {
+        "status": "ok",
+        "index_size": int(instance.index.ntotal),
+        "index_type": type(instance.index).__name__,
+        "faiss_gpu": instance.config.faiss_gpu,
+        "faiss_index_device": instance.faiss_index_device,
+        "faiss_index_precision": instance.faiss_index_precision,
+        "faiss_gpu_memory_bytes": instance.faiss_gpu_memory_bytes,
+    }

@@ -124,15 +124,18 @@ The Agent only calls `POST /search` over HTTP, so the retriever stays replaceabl
 benchmark uses the compatible `POST /search/batch` endpoint to avoid 100 separate HTTP
 round trips. A mock service remains available through
 `bash scripts/launch_mock_retriever.sh` for unit tests.
-Set `OURO_RETRIEVER_DEVICE=cpu OURO_RETRIEVER_DTYPE=float32` to benchmark without using a
-GPU; the default service uses `cuda:0` and FP16 query encoding.
+The launcher reserves physical GPU 0 by default. E5 runs in FP16 on `cuda:0`, while the
+21,015,324-entry Flat index is copied to the same GPU in FP32. Set `OURO_FAISS_GPU=0` to
+run the CPU Flat correctness baseline without changing E5, corpus, or retrieval logic.
+`/health` reports the concrete FAISS class, device, precision, and measured index memory.
 
-The real CPU/FP32 deployment on this server reports 21,015,324 index entries. For the
-query `Who wrote the play Hamlet?`, top-1 is the `Hamlet` article and its text identifies
-William Shakespeare. The 100-query, top-3, batch-size-100 benchmark completed in 116.802
-seconds: 116,741.34 ms per HTTP batch, 1,167.41 ms amortized mean latency per query, and
-0.85615 QPS. These CPU Flat-index numbers are a correctness baseline; production RL needs
-a dedicated GPU retriever or a separately deployed retrieval node.
+The dedicated A800 deployment is a real `GpuIndexFlat`, not merely GPU query encoding.
+For `Who wrote the play Hamlet?`, top-1 is the `Hamlet` article and its text identifies
+William Shakespeare. The fixed 100-query, top-3, batch-size-100 GPU run achieved 203.14
+QPS and 4.283 ms amortized latency per query, versus 0.909 QPS and 1,099.314 ms for CPU
+Flat. The top-3 sets matched for all 100 queries; ordered lists matched for 98, with the
+two differences limited to exactly tied documents. Full resource and 7-GPU smoke details
+are in [`docs/gpu_faiss_validation.md`](docs/gpu_faiss_validation.md).
 
 ## Agent, Reward, Mask, And Trajectories
 
@@ -181,15 +184,17 @@ Comments in `configs/train/grpo_r3.yaml` identify original and changed values.
 | veRL | Search-R1 fork | v0.6.0 pinned SHA | Yes | Async AgentLoop and Torch compatibility |
 | Reward | final-answer outcome | pure final-answer EM | No bonus | Explicit project requirement |
 
-The short-run launcher uses batch/mini-batch 8 and micro-batch 1 only to validate the
-end-to-end update economically; all algorithmic settings remain the same. It requires
-eight GPUs with at least 70GB free each and a healthy real retriever, then saves a final
-checkpoint and offline W&B/console metrics:
+The short-run launcher uses one prompt per selected GPU, group size 5, and micro-batch 1
+to validate the end-to-end update economically; all algorithmic settings remain the same.
+It requires every GPU named by `OURO_TRAIN_GPU_IDS` to have at least 70GB free and a
+healthy real retriever, then saves a final checkpoint and offline W&B/console metrics:
 
 ```bash
 bash scripts/run_grpo_r3.sh 1
 bash scripts/run_grpo_r3.sh 5
 bash scripts/run_grpo_r3.sh 20
+OURO_TRAIN_GPU_IDS=1,2,3,4,5,6,7 \
+  OURO_RUN_NAME=grpo-r3-7gpu-1-step bash scripts/run_grpo_r3.sh 1
 ```
 
 Logged metrics include reward/EM accuracy, search action rate, mean search turns, format

@@ -39,6 +39,12 @@ async def test_mock_search_rejects_blank_query() -> None:
 
 def test_e5_search_contract_without_loading_artifacts(monkeypatch) -> None:
     class FakeBackend:
+        config = type("Config", (), {"faiss_gpu": True})()
+        index = type("GpuIndexFlat", (), {"ntotal": 21_015_324})()
+        faiss_index_device = "cuda:0"
+        faiss_index_precision = "float32"
+        faiss_gpu_memory_bytes = 64_000_000_000
+
         def search(self, query: str, top_k: int) -> list[dict[str, object]]:
             return [
                 {
@@ -68,3 +74,8 @@ def test_e5_search_contract_without_loading_artifacts(monkeypatch) -> None:
     assert payload["query"] == "Who wrote Hamlet?"
     assert payload["documents"][0]["title"] == "Hamlet"
     assert len(batch_payload["results"]) == 2
+
+    health = e5_server.health()
+    assert health["faiss_gpu"] is True
+    assert health["faiss_index_device"] == "cuda:0"
+    assert health["index_size"] == 21_015_324

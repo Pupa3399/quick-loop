@@ -27,41 +27,50 @@ export RAY_ENABLE_UV_RUN_RUNTIME_ENV=0
 export C_INCLUDE_PATH="$DATA_ROOT/python-dev/usr/include/python3.10:$DATA_ROOT/python-dev/usr/include"
 export LIBRARY_PATH="$DATA_ROOT/python-dev/usr/lib/x86_64-linux-gnu"
 
+TRAIN_GPU_IDS="${OURO_TRAIN_GPU_IDS:-0,1,2,3,4,5,6,7}"
+IFS=',' read -r -a TRAIN_GPUS <<< "$TRAIN_GPU_IDS"
+GPU_COUNT="${#TRAIN_GPUS[@]}"
+RUN_NAME="${OURO_RUN_NAME:-grpo-r3-$STEPS-step}"
+MIN_FREE_MIB="${OURO_MIN_FREE_MIB:-70000}"
+if (( GPU_COUNT < 1 )); then
+  echo "OURO_TRAIN_GPU_IDS must name at least one GPU." >&2
+  exit 2
+fi
+
 if [[ "${OURO_REQUIRE_IDLE_GPUS:-1}" == "1" ]]; then
-  mapfile -t FREE_MEMORY < <(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits)
-  if [[ "${#FREE_MEMORY[@]}" -ne 8 ]]; then
-    echo "Expected 8 GPUs, found ${#FREE_MEMORY[@]}; refusing to start." >&2
-    exit 2
-  fi
-  for gpu in "${!FREE_MEMORY[@]}"; do
-    if (( FREE_MEMORY[gpu] < 70000 )); then
-      echo "GPU $gpu has only ${FREE_MEMORY[gpu]} MiB free; refusing to disturb another job." >&2
+  for gpu in "${TRAIN_GPUS[@]}"; do
+    free_memory="$(nvidia-smi --id="$gpu" --query-gpu=memory.free --format=csv,noheader,nounits)"
+    if (( free_memory < MIN_FREE_MIB )); then
+      echo "GPU $gpu has only $free_memory MiB free; refusing to disturb another job." >&2
       exit 2
     fi
   done
 fi
+export CUDA_VISIBLE_DEVICES="$TRAIN_GPU_IDS"
 
 curl --fail --silent --show-error http://127.0.0.1:8000/health >/dev/null
 mkdir -p \
   "$RAY_TEMP_ROOT" \
   "$PROJECT_ROOT/outputs/logs" \
-  "$PROJECT_ROOT/outputs/checkpoints/grpo-r3-$STEPS-step"
+  "$PROJECT_ROOT/outputs/checkpoints/$RUN_NAME"
 
 cd "$PROJECT_ROOT"
 uv run --no-sync python -m verl.trainer.main_ppo \
   --config-path="$PROJECT_ROOT/configs/train" \
   --config-name=verl_searchr1_grpo \
   trainer.total_training_steps="$STEPS" \
-  trainer.default_local_dir="outputs/checkpoints/grpo-r3-$STEPS-step" \
+  trainer.n_gpus_per_node="$GPU_COUNT" \
+  trainer.default_local_dir="outputs/checkpoints/$RUN_NAME" \
   trainer.save_freq="$STEPS" \
   trainer.test_freq=-1 \
   trainer.val_before_train=false \
   trainer.logger='[console,wandb]' \
   +ray_kwargs.ray_init._temp_dir="$RAY_TEMP_ROOT" \
-  data.train_batch_size=8 \
-  data.val_batch_size=8 \
-  actor_rollout_ref.actor.ppo_mini_batch_size=8 \
+  data.train_batch_size="$GPU_COUNT" \
+  data.val_batch_size="$GPU_COUNT" \
+  actor_rollout_ref.actor.ppo_mini_batch_size="$GPU_COUNT" \
   actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=1 \
+  actor_rollout_ref.rollout.agent.num_workers="$GPU_COUNT" \
   actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=1 \
   actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=1 \
-  2>&1 | tee "outputs/logs/grpo-r3-$STEPS-step.log"
+  2>&1 | tee "outputs/logs/$RUN_NAME.log"

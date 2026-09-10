@@ -9,4 +9,6 @@ device: cuda:0
 dtype: float16
 query_max_length: 256
 batch_size: 64
-faiss_gpu: false
+faiss_gpu: true
+faiss_device: 0
+faiss_use_float16: false

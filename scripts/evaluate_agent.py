@@ -110,6 +110,7 @@ def main(config: DictConfig) -> None:
         temperature=config.agent.temperature,
         top_p=config.agent.top_p,
         trajectory_writer=JsonlTrajectoryWriter(PROJECT_ROOT / config.eval.trajectory_dir),
+        prompt_profile=config.prompt_profile.name,
     )
     sample_reports = []
     for example in _iter_examples(config):
@@ -162,6 +163,7 @@ def main(config: DictConfig) -> None:
         },
         "max_search_turns": config.agent.max_search_turns,
         "top_k": config.search.top_k,
+        "prompt_profile": config.prompt_profile.name,
         "sample_reports": sample_reports,
     }
     safe_model_name = "".join(

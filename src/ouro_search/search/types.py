@@ -35,3 +35,9 @@ class SearchResponse:
             query=str(value["query"]),
             documents=[Document.from_dict(document) for document in value["documents"]],
         )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "query": self.query,
+            "documents": [document.to_dict() for document in self.documents],
+        }

@@ -154,6 +154,22 @@ Model-generated tokens use policy mask 1; all inserted `<information>` tokens us
 The reward normalizes case, punctuation, English articles, and whitespace, checks all
 aliases, and gives no search or formatting bonus.
 
+## Prompt Profiles
+
+The Agent state machine is protocol-independent. Select the default Search-R1 protocol
+or the Hermes function-calling protocol through Hydra:
+
+```bash
+uv run python scripts/smoke_test_prompt_profiles.py
+uv run python scripts/smoke_test_agent.py prompt_profile=search_r1
+```
+
+Search-R1 uses `<think>`, `<search>`, `<information>`, and `<answer>` in one continued
+assistant stream. Hermes uses a Search function schema, `<tool_call>` JSON, an explicit
+ChatML `tool` message containing `<tool_response>` JSON, and a plain assistant final
+answer. Sources and extension details are in
+[`docs/prompt_profiles.md`](docs/prompt_profiles.md).
+
 ## Search-R1 To Ouro GRPO Configuration
 
 The reference is Search-R1 commit `598e61bd1d36895726d28a8d06b3a15bed19f5d3`.

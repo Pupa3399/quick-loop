@@ -11,9 +11,9 @@ from verl.experimental.agent_loop.agent_loop import (
     AgentLoopOutput,
 )
 
-from ouro_search.agent.parser import ActionType, parse_agent_output
-from ouro_search.agent.protocol import format_information
-from ouro_search.rewards.answer_reward import compute_answer_reward
+from ouro_search.agent.parser import ActionType
+from ouro_search.agent.profiles import PromptProfile, get_prompt_profile
+from ouro_search.rewards.answer_reward import answer_exact_match
 from ouro_search.search.types import SearchResponse
 from ouro_search.trajectory.schema import Trajectory, TurnRecord
 from ouro_search.trajectory.writer import JsonlTrajectoryWriter
@@ -35,6 +35,7 @@ class OuroSearchAgentLoop(AgentLoopBase):
         max_generation_tokens: int = 500,
         max_information_tokens: int = 500,
         trajectory_dir: str = "outputs/trajectories/verl",
+        prompt_profile: str = "search_r1",
         **kwargs: Any,
     ) -> None:
         del processor, kwargs
@@ -48,6 +49,7 @@ class OuroSearchAgentLoop(AgentLoopBase):
         cls.max_generation_tokens = max_generation_tokens
         cls.max_information_tokens = max_information_tokens
         cls.trajectory_writer = JsonlTrajectoryWriter(trajectory_dir)
+        cls.prompt_profile: PromptProfile = get_prompt_profile(prompt_profile)
         cls.response_length = config.actor_rollout_ref.rollout.response_length
 
     async def _search(self, query: str) -> SearchResponse:
@@ -83,7 +85,7 @@ class OuroSearchAgentLoop(AgentLoopBase):
                 int(sampling_params.get("max_tokens", self.response_length)),
                 self.max_generation_tokens,
             ),
-            stop=["</search>", "</answer>"],
+            stop=list(self.prompt_profile.stop_sequences),
             include_stop_str_in_output=True,
         )
         for turn_id in range(self.max_search_actions + 1):
@@ -106,7 +108,7 @@ class OuroSearchAgentLoop(AgentLoopBase):
                 else:
                     response_logprobs = None
 
-            action = parse_agent_output(generated_text)
+            action = self.prompt_profile.parse_action(generated_text)
             if action.action is ActionType.ANSWER:
                 termination_reason = "answer"
                 break
@@ -120,7 +122,7 @@ class OuroSearchAgentLoop(AgentLoopBase):
             started = time.perf_counter()
             search_result = await self._search(action.query or "")
             search_seconds += time.perf_counter() - started
-            information = format_information(search_result.documents)
+            information = self.prompt_profile.format_observation(search_result)
             information_ids = self.tokenizer(
                 information, add_special_tokens=False
             )["input_ids"][: self.max_information_tokens]
@@ -161,7 +163,7 @@ class OuroSearchAgentLoop(AgentLoopBase):
             aliases = [aliases]
         aliases = [str(alias) for alias in aliases]
         final_output = model_outputs[-1] if model_outputs else ""
-        final_action = parse_agent_output(final_output)
+        final_action = self.prompt_profile.parse_action(final_output)
         prediction = final_action.answer or final_output
         extra_info = kwargs.get("extra_info", {})
         if isinstance(extra_info, dict):
@@ -177,7 +179,10 @@ class OuroSearchAgentLoop(AgentLoopBase):
             prediction=prediction,
             reference_answer=str(kwargs.get("reference_answer", aliases[0] if aliases else "")),
             answer_aliases=aliases,
-            reward=compute_answer_reward("\n".join(model_outputs), aliases),
+            reward=float(
+                final_action.answer is not None
+                and answer_exact_match(final_action.answer, aliases)
+            ),
             num_search_turns=len(turns),
             turns=turns,
             termination_reason=termination_reason,

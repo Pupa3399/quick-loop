@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from ouro_search.agent.parser import ActionType, parse_agent_output
-from ouro_search.agent.protocol import build_agent_prompt, format_information
-from ouro_search.rewards.answer_reward import compute_answer_reward
+from ouro_search.agent.parser import ActionType
+from ouro_search.agent.profiles import AgentPrompt, PromptProfile, get_prompt_profile
+from ouro_search.rewards.answer_reward import answer_exact_match
 from ouro_search.search.types import SearchResponse
 from ouro_search.trajectory.schema import Trajectory, TurnRecord
 from ouro_search.trajectory.writer import JsonlTrajectoryWriter
@@ -13,7 +13,7 @@ from ouro_search.trajectory.writer import JsonlTrajectoryWriter
 class InferenceEngine(Protocol):
     def generate(
         self,
-        prompt: str,
+        prompt: str | AgentPrompt,
         *,
         max_new_tokens: int,
         temperature: float,
@@ -44,6 +44,7 @@ class AgentRunner:
         temperature: float = 0.0,
         top_p: float = 1.0,
         trajectory_writer: JsonlTrajectoryWriter | None = None,
+        prompt_profile: str | PromptProfile = "search_r1",
     ) -> None:
         if max_search_turns < 0:
             raise ValueError("max_search_turns cannot be negative")
@@ -61,6 +62,7 @@ class AgentRunner:
         self.temperature = temperature
         self.top_p = top_p
         self.trajectory_writer = trajectory_writer
+        self.prompt_profile = get_prompt_profile(prompt_profile)
 
     def _validate_loop_schedule(self, schedule: dict[int, int]) -> None:
         for turn_id, steps in schedule.items():
@@ -93,7 +95,7 @@ class AgentRunner:
         for _ in range(self.max_search_turns + 1):
             turn_id = len(turns)
             loop_steps = schedule.get(turn_id, self.default_loop_steps)
-            prompt = build_agent_prompt(question.strip(), turns)
+            prompt = self.prompt_profile.build_prompt(question.strip(), turns)
             remaining_tokens = self.max_response_tokens - response_token_count
             if remaining_tokens <= 0:
                 termination_reason = "max_response_length"
@@ -106,7 +108,7 @@ class AgentRunner:
                 loop_steps=loop_steps,
             )
             response_token_count += self._count_tokens(final_model_output)
-            parsed = parse_agent_output(final_model_output)
+            parsed = self.prompt_profile.parse_action(final_model_output)
 
             if parsed.action is ActionType.ANSWER:
                 prediction = parsed.answer or ""
@@ -123,7 +125,7 @@ class AgentRunner:
 
             query = parsed.query or ""
             response = self.search_client.search(query)
-            information = format_information(response.documents)
+            information = self.prompt_profile.format_observation(response)
             remaining_tokens = self.max_response_tokens - response_token_count
             information = self._truncate_text(
                 information,
@@ -157,9 +159,10 @@ class AgentRunner:
             final_model_output=final_model_output,
             response_token_count=min(response_token_count, self.max_response_tokens),
         )
-        trajectory.reward = compute_answer_reward(
-            final_model_output,
-            trajectory.answer_aliases,
+        final_answer = self.prompt_profile.parse_final_answer(final_model_output)
+        trajectory.reward = float(
+            final_answer is not None
+            and answer_exact_match(final_answer, trajectory.answer_aliases)
         )
         if self.trajectory_writer is not None:
             self.trajectory_writer.write(trajectory)

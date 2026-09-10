@@ -6,3 +6,4 @@
   max_generation_tokens: 500
   max_information_tokens: 500
   trajectory_dir: outputs/trajectories/verl
+  prompt_profile: search_r1

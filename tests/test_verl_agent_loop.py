@@ -62,6 +62,9 @@ async def test_verl_agent_loop_masks_information_and_writes_trajectory(
     loop.max_information_tokens = 500
     loop.response_length = 32
     loop.trajectory_writer = JsonlTrajectoryWriter(tmp_path)
+    from ouro_search.agent.profiles import get_prompt_profile
+
+    loop.prompt_profile = get_prompt_profile("search_r1")
 
     async def fake_search(query: str) -> SearchResponse:
         assert query == "Hamlet author"

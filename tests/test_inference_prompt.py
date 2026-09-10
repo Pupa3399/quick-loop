@@ -34,7 +34,7 @@ def test_search_history_continues_after_single_chat_template() -> None:
     assert rendered.count("CHAT[") == 1
     assert "Question: Who wrote Hamlet?" in rendered
     assert rendered.index("ASSISTANT:") < rendered.index("<search>Hamlet author</search>")
-    assert rendered.endswith("<information>William Shakespeare</information>\n")
+    assert rendered.endswith("<information>William Shakespeare</information>\n\n")
 
 
 def test_vllm_engine_rejects_wrong_ouro_depth() -> None:

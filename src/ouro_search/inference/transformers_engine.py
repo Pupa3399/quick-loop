@@ -1,7 +1,38 @@
 from __future__ import annotations
 
-from ouro_search.agent.protocol import split_agent_prompt
+from ouro_search.agent.profiles import AgentPrompt
+from ouro_search.agent.rendering import render_agent_prompt
 from ouro_search.models.ouro import OuroModel
+
+
+def _stopping_criteria(tokenizer: object, stop_sequences: tuple[str, ...]) -> object | None:
+    if not stop_sequences:
+        return None
+
+    import torch
+    from transformers import StoppingCriteria, StoppingCriteriaList
+
+    targets = [
+        torch.tensor(tokenizer.encode(sequence, add_special_tokens=False))
+        for sequence in stop_sequences
+    ]
+
+    class StopOnTokenSequences(StoppingCriteria):
+        def __call__(
+            self,
+            input_ids: torch.LongTensor,
+            scores: torch.FloatTensor,
+            **kwargs: object,
+        ) -> torch.BoolTensor:
+            del scores, kwargs
+            matches = torch.zeros(input_ids.shape[0], dtype=torch.bool, device=input_ids.device)
+            for target in targets:
+                target = target.to(input_ids.device)
+                if input_ids.shape[1] >= target.numel():
+                    matches |= (input_ids[:, -target.numel() :] == target).all(dim=1)
+            return matches
+
+    return StoppingCriteriaList([StopOnTokenSequences()])
 
 
 class TransformersEngine:
@@ -25,21 +56,16 @@ class TransformersEngine:
         token_ids = self.model.tokenizer.encode(text, add_special_tokens=False)[:max_tokens]
         return self.model.tokenizer.decode(token_ids, skip_special_tokens=False)
 
-    def _format_prompt(self, prompt: str) -> str:
-        initial_prompt, continuation = split_agent_prompt(prompt)
-        tokenizer = self.model.tokenizer
-        if not self.use_chat_template or not tokenizer.chat_template:
-            return initial_prompt + continuation
-        rendered = tokenizer.apply_chat_template(
-            [{"role": "user", "content": initial_prompt}],
-            tokenize=False,
-            add_generation_prompt=True,
+    def _format_prompt(self, prompt: str | AgentPrompt) -> str:
+        return render_agent_prompt(
+            self.model.tokenizer,
+            prompt,
+            use_chat_template=self.use_chat_template,
         )
-        return rendered + continuation
 
     def generate(
         self,
-        prompt: str,
+        prompt: str | AgentPrompt,
         *,
         max_new_tokens: int = 512,
         temperature: float = 0.0,
@@ -73,6 +99,10 @@ class TransformersEngine:
         }
         if not greedy:
             generation_kwargs.update(temperature=temperature, top_p=top_p)
+        if isinstance(prompt, AgentPrompt):
+            criteria = _stopping_criteria(self.model.tokenizer, prompt.stop_sequences)
+            if criteria is not None:
+                generation_kwargs["stopping_criteria"] = criteria
 
         output_ids = self.model.generate(**generation_kwargs)
         prompt_length = encoded["input_ids"].shape[-1]

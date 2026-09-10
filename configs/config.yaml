@@ -1,6 +1,7 @@
 defaults:
   - model: ouro_2.6b_thinking
   - agent: default
+  - prompt_profile: search_r1
   - search: mock
   - eval: default
   - _self_

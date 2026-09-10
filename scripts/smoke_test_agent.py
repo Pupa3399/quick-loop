@@ -44,6 +44,7 @@ def main(config: DictConfig) -> None:
         temperature=config.agent.temperature,
         top_p=config.agent.top_p,
         trajectory_writer=JsonlTrajectoryWriter(PROJECT_ROOT / config.eval.trajectory_dir),
+        prompt_profile=config.prompt_profile.name,
     )
     trajectory = runner.run(
         "Use the retriever to search for 'Ouro model'. According to the retrieved document, "

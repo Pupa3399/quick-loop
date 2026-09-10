@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ouro_search.agent.protocol import split_agent_prompt
+from ouro_search.agent.profiles import AgentPrompt
+from ouro_search.agent.rendering import render_agent_prompt
 
 
 class VllmEngine:
@@ -44,20 +45,16 @@ class VllmEngine:
         token_ids = self.tokenizer.encode(text, add_special_tokens=False)[:max_tokens]
         return self.tokenizer.decode(token_ids, skip_special_tokens=False)
 
-    def _format_prompt(self, prompt: str) -> str:
-        initial_prompt, continuation = split_agent_prompt(prompt)
-        if not self.use_chat_template or not self.tokenizer.chat_template:
-            return initial_prompt + continuation
-        rendered = self.tokenizer.apply_chat_template(
-            [{"role": "user", "content": initial_prompt}],
-            tokenize=False,
-            add_generation_prompt=True,
+    def _format_prompt(self, prompt: str | AgentPrompt) -> str:
+        return render_agent_prompt(
+            self.tokenizer,
+            prompt,
+            use_chat_template=self.use_chat_template,
         )
-        return rendered + continuation
 
     def generate(
         self,
-        prompt: str,
+        prompt: str | AgentPrompt,
         *,
         max_new_tokens: int = 500,
         temperature: float = 0.0,
@@ -77,11 +74,12 @@ class VllmEngine:
 
         from vllm import SamplingParams
 
+        stop_sequences = list(prompt.stop_sequences) if isinstance(prompt, AgentPrompt) else []
         sampling_kwargs: dict[str, Any] = {
             "temperature": temperature,
             "top_p": top_p,
             "max_tokens": max_new_tokens,
-            "stop": ["</search>", "</answer>"],
+            "stop": stop_sequences,
             "include_stop_str_in_output": True,
         }
         params = SamplingParams(**sampling_kwargs)

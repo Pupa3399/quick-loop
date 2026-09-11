@@ -187,6 +187,7 @@ class OuroSearchAgentLoop(AgentLoopBase):
             turns=turns,
             termination_reason=termination_reason,
             final_model_output=final_output,
+            raw_generations=model_outputs,
             response_token_count=len(response_ids),
         )
         self.trajectory_writer.write(trajectory)

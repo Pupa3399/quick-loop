@@ -89,6 +89,7 @@ class AgentRunner:
         prediction = ""
         termination_reason = ""
         final_model_output = ""
+        raw_generations: list[str] = []
         response_token_count = 0
 
         # One final generation is allowed after the last retrieval.
@@ -107,6 +108,7 @@ class AgentRunner:
                 top_p=self.top_p,
                 loop_steps=loop_steps,
             )
+            raw_generations.append(final_model_output)
             response_token_count += self._count_tokens(final_model_output)
             parsed = self.prompt_profile.parse_action(final_model_output)
 
@@ -157,6 +159,7 @@ class AgentRunner:
             turns=turns,
             termination_reason=termination_reason,
             final_model_output=final_model_output,
+            raw_generations=raw_generations,
             response_token_count=min(response_token_count, self.max_response_tokens),
         )
         final_answer = self.prompt_profile.parse_final_answer(final_model_output)

@@ -170,6 +170,11 @@ ChatML `tool` message containing `<tool_response>` JSON, and a plain assistant f
 answer. Sources and extension details are in
 [`docs/prompt_profiles.md`](docs/prompt_profiles.md).
 
+The 20-sample, inference-only comparison of original Ouro R3 under both profiles is in
+[`docs/zero_shot_agent_20_results.md`](docs/zero_shot_agent_20_results.md). Complete raw
+generations and retrieval trajectories remain under
+`outputs/evaluations/zero-shot-agent-v1-20/`.
+
 ## Search-R1 To Ouro GRPO Configuration
 
 The reference is Search-R1 commit `598e61bd1d36895726d28a8d06b3a15bed19f5d3`.

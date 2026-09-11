@@ -34,6 +34,7 @@ class Trajectory:
     turns: list[TurnRecord] = field(default_factory=list)
     termination_reason: str = ""
     final_model_output: str = ""
+    raw_generations: list[str] = field(default_factory=list)
     response_token_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -48,5 +49,6 @@ class Trajectory:
             "turns": [turn.to_dict() for turn in self.turns],
             "termination_reason": self.termination_reason,
             "final_model_output": self.final_model_output,
+            "raw_generations": self.raw_generations,
             "response_token_count": self.response_token_count,
         }

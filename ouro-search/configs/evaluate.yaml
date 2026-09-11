@@ -1,0 +1,13 @@
+defaults:
+  - model: ouro_2_6b_r3
+  - agent: default
+  - prompt_profile: search_r1
+  - search: e5_wiki18
+  - eval: default
+  - _self_
+
+hydra:
+  run:
+    dir: outputs/logs/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  job:
+    chdir: false

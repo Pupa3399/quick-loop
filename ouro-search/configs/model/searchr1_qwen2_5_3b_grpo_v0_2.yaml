@@ -1,0 +1,17 @@
+display_name: Search-R1 Qwen2.5-3B GRPO v0.2
+backend: vllm
+model_name: PeterJinGo/SearchR1-nq_hotpotqa_train-qwen2.5-3b-em-grpo-v0.2
+model_path: /data2/wuguanting/quick_loop/data/models/searchr1-qwen2.5-3b-grpo-v0.2
+revision: 7ff32234abe1e1bf1dbbbf3a1385686b52ecfea2
+backbone: Qwen/Qwen2.5-3B
+parameter_count: 3397103616
+dtype: bfloat16
+trust_remote_code: false
+use_chat_template: true
+fixed_loop_steps: null
+max_model_len: 7096
+gpu_memory_utilization: 0.4
+tensor_parallel_size: 1
+enforce_eager: false
+hf_endpoint: https://hf-mirror.com
+training: Search-R1 v0.2 outcome-only EM GRPO on NQ + HotpotQA

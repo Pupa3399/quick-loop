@@ -1,0 +1,55 @@
+# Workspace-local metadata and shared research assets
+/.agents/
+/.codex/
+/data/
+
+# Python environments and caches
+**/.venv/
+**/.uv-bootstrap/
+**/.uv-cache/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+**/.ray-tmp/
+**/.coverage
+**/htmlcov/
+
+# Local configuration and experiment tracking
+**/.env
+**/.env.*
+!**/.env.example
+**/wandb/
+
+# Generated experiment artifacts; retain directory placeholders
+/ouro-search/outputs/*
+!/ouro-search/outputs/logs/
+!/ouro-search/outputs/trajectories/
+/ouro-search/outputs/logs/*
+/ouro-search/outputs/trajectories/*
+!/ouro-search/outputs/logs/.gitkeep
+!/ouro-search/outputs/trajectories/.gitkeep
+
+# Model, training, retrieval, and dataset artifacts
+**/checkpoints/
+**/huggingface/
+**/hf_cache/
+**/.cache/huggingface/
+**/datasets/
+**/indexes/
+**/third_party/
+*.ckpt
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.faiss
+
+# Editor and OS files
+**/.idea/
+**/.vscode/
+*.swp
+*.swo
+.DS_Store

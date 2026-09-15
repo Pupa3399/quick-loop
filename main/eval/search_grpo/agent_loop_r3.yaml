@@ -1,0 +1,9 @@
+- name: ouro_search_r1
+  _target_: ouro_search.verl.agent_loop.OuroSearchAgentLoop
+  retriever_url: http://127.0.0.1:8000/search
+  top_k: 3
+  max_search_actions: 4
+  max_generation_tokens: 500
+  max_information_tokens: 500
+  trajectory_dir: main/data/trajectories/search_grpo
+  prompt_profile: search_r1

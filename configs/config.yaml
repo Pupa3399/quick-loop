@@ -1,0 +1,12 @@
+defaults:
+  - model: ouro_2.6b_thinking
+  - agent: default
+  - prompt_profile: search_r1
+  - search: mock
+  - _self_
+
+hydra:
+  run:
+    dir: main/data/logs/hydra/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  job:
+    chdir: false

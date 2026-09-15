@@ -1,0 +1,18 @@
+display_name: Ouro-2.6B R3
+backend: vllm
+model_name: ByteDance/Ouro-2.6B-Thinking
+model_path: main/models/vllm-ouro-r3
+revision: f1edd81e7ac41355db670500ceaf204e0f73af68
+backbone: Ouro-2.6B-Thinking
+parameter_count: 2667974657
+dtype: bfloat16
+trust_remote_code: true
+use_chat_template: true
+fixed_loop_steps: 3
+max_model_len: 7096
+gpu_memory_utilization: 0.4
+tensor_parallel_size: 1
+enforce_eager: false
+hf_endpoint: https://hf-mirror.com
+training: Official Thinking model; initial R3 policy for Search-R1-style GRPO
+checkpoint_state: Official Ouro snapshot in an R3 vLLM metadata view

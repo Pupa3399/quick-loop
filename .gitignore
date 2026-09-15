@@ -1,12 +1,9 @@
-# Workspace-local metadata and shared research assets
+# Workspace metadata
 /.agents/
 /.codex/
-/data/
 
 # Python environments and caches
-**/.venv/
-**/.uv-bootstrap/
-**/.uv-cache/
+/.venv/
 **/.cache/
 **/__pycache__/
 *.py[cod]
@@ -23,23 +20,20 @@
 **/.env.*
 !**/.env.example
 **/wandb/
+*.log
 
-# Generated experiment artifacts; retain directory placeholders
-/ouro-search/outputs/*
-!/ouro-search/outputs/logs/
-!/ouro-search/outputs/trajectories/
-/ouro-search/outputs/logs/*
-/ouro-search/outputs/trajectories/*
-!/ouro-search/outputs/logs/.gitkeep
-!/ouro-search/outputs/trajectories/.gitkeep
+# External datasets, generated data, model weights, and local checkpoints
+/main/datasets/*
+!/main/datasets/.gitkeep
+/main/data/*
+!/main/data/.gitkeep
+/main/models/*
+!/main/models/.gitkeep
+/main/checkpoints/*
+!/main/checkpoints/.gitkeep
+/main/eval/*/results/
 
-# Model, training, retrieval, and dataset artifacts
-**/checkpoints/
-**/huggingface/
-**/hf_cache/
-**/datasets/
-**/indexes/
-**/third_party/
+# Large artifacts outside the standard local directories
 *.ckpt
 *.safetensors
 *.bin

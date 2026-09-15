@@ -1,0 +1,10 @@
+model_name: ByteDance/Ouro-2.6B-Thinking
+revision: f1edd81e7ac41355db670500ceaf204e0f73af68
+dtype: bfloat16
+trust_remote_code: true
+total_ut_steps: 3
+freeze_exit_gate: true
+use_cache: false
+device: null
+cache_dir: main/models/huggingface
+hf_endpoint: https://hf-mirror.com

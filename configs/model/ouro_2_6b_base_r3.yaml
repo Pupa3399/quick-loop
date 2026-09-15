@@ -1,0 +1,18 @@
+display_name: Ouro-2.6B Base R3
+backend: vllm
+model_name: ByteDance/Ouro-2.6B
+model_path: main/models/vllm-ouro-2.6b-base-r3
+revision: 1ed04250da1a9936042725d302e81c8fa2ab5abd
+backbone: Ouro-2.6B
+parameter_count: 2667974657
+dtype: bfloat16
+trust_remote_code: true
+use_chat_template: true
+fixed_loop_steps: 3
+max_model_len: 7096
+gpu_memory_utilization: 0.4
+tensor_parallel_size: 1
+enforce_eager: false
+hf_endpoint: https://hf-mirror.com
+training: Official base model; inference only
+checkpoint_state: Official Ouro base snapshot in an R3 vLLM metadata view

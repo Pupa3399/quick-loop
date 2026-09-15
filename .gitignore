@@ -32,6 +32,7 @@
 /main/checkpoints/*
 !/main/checkpoints/.gitkeep
 /main/eval/*/results/
+/main/tests/*/results/
 
 # Large artifacts outside the standard local directories
 *.ckpt

@@ -1,0 +1,37 @@
+experiment_name: ouro_model_protocol_test
+sample_file: main/tests/ouro_model_protocol_test/samples.json
+results_dir: main/tests/ouro_model_protocol_test/results
+
+models:
+  base:
+    path: main/models/vllm-ouro-2.6b-base-r3
+    source_revision: 1ed04250da1a9936042725d302e81c8fa2ab5abd
+  thinking:
+    path: main/models/vllm-ouro-r3
+    source_revision: f1edd81e7ac41355db670500ceaf204e0f73af68
+
+inference:
+  dtype: bfloat16
+  trust_remote_code: true
+  loop_steps: 3
+  temperature: 0.0
+  top_p: 1.0
+  seed: 0
+  max_model_len: 7096
+  max_new_tokens: null
+  max_response_tokens: null
+  gpu_memory_utilization: 0.4
+
+agent:
+  protocols:
+    - search_r1
+    - hermes
+  max_search_turns: 4
+  max_information_tokens: null
+
+retriever:
+  url: http://127.0.0.1:8000
+  top_k: 3
+  timeout_seconds: 60.0
+  require_gpu_faiss: true
+  expected_index_size: 21015324

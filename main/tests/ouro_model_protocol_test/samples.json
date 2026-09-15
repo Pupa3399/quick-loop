@@ -1,0 +1,142 @@
+[
+  {
+    "sample_id": "nq-test-1022",
+    "dataset": "nq",
+    "question": "where is the new stadium being built in las vegas?",
+    "reference_answer": "Paradise, Nevada",
+    "answer_aliases": ["Paradise, Nevada", "in Paradise, Nevada"]
+  },
+  {
+    "sample_id": "nq-test-1161",
+    "dataset": "nq",
+    "question": "how many players in football hall of fame?",
+    "reference_answer": "318",
+    "answer_aliases": ["318", "318 individuals"]
+  },
+  {
+    "sample_id": "nq-test-1371",
+    "dataset": "nq",
+    "question": "where are the spanish steps located in italy?",
+    "reference_answer": "Rome",
+    "answer_aliases": ["Rome"]
+  },
+  {
+    "sample_id": "nq-test-1428",
+    "dataset": "nq",
+    "question": "who laid the foundation of school of possibilism?",
+    "reference_answer": "Strabo",
+    "answer_aliases": ["Strabo", "Marshall Sahlins"]
+  },
+  {
+    "sample_id": "nq-test-1573",
+    "dataset": "nq",
+    "question": "disagreements involving slavery and states' rights were two of the main causes of?",
+    "reference_answer": "the American Civil War",
+    "answer_aliases": ["the American Civil War"]
+  },
+  {
+    "sample_id": "nq-test-1582",
+    "dataset": "nq",
+    "question": "when did the twenty one pilots hiatus start?",
+    "reference_answer": "November 2016",
+    "answer_aliases": ["November 2016", "July 2017"]
+  },
+  {
+    "sample_id": "nq-test-1709",
+    "dataset": "nq",
+    "question": "who won the oscar for best actor in 1975?",
+    "reference_answer": "Art Carney",
+    "answer_aliases": ["Art Carney"]
+  },
+  {
+    "sample_id": "nq-test-1777",
+    "dataset": "nq",
+    "question": "who has the power to approve or veto legislation constitution?",
+    "reference_answer": "the President",
+    "answer_aliases": ["the President"]
+  },
+  {
+    "sample_id": "nq-test-1801",
+    "dataset": "nq",
+    "question": "ajay devgan preity zinta and madhuri dixit movie?",
+    "reference_answer": "Yeh Raaste Hain Pyaar Ke",
+    "answer_aliases": ["Yeh Raaste Hain Pyaar Ke"]
+  },
+  {
+    "sample_id": "nq-test-1803",
+    "dataset": "nq",
+    "question": "when does closure of the ductus arteriosus occur?",
+    "reference_answer": "at birth",
+    "answer_aliases": ["at birth", "birth"]
+  },
+  {
+    "sample_id": "hotpotqa-test-1106",
+    "dataset": "hotpotqa",
+    "question": "Which Captain launched the attack which led to more casualties than any other incident in the war fought between the settlers of the nascent colony of New Netherland and the native Lenape population?",
+    "reference_answer": "Captain John Underhill",
+    "answer_aliases": ["Captain John Underhill"]
+  },
+  {
+    "sample_id": "hotpotqa-test-1205",
+    "dataset": "hotpotqa",
+    "question": "The Soul of Buddha is a 1918 American silent romance film shot in a borough  that is the western terminus of what?",
+    "reference_answer": "the George Washington Bridge",
+    "answer_aliases": ["the George Washington Bridge"]
+  },
+  {
+    "sample_id": "hotpotqa-test-1212",
+    "dataset": "hotpotqa",
+    "question": "Were the documentaries  One Big Hapa Family and A Film Unfinished directed by the same person?",
+    "reference_answer": "no",
+    "answer_aliases": ["no"]
+  },
+  {
+    "sample_id": "hotpotqa-test-1672",
+    "dataset": "hotpotqa",
+    "question": "Which ground force of the Austro-Hungarian Dual Monarchy did Jan Romer joined?",
+    "reference_answer": "The Austro-Hungarian Army",
+    "answer_aliases": ["The Austro-Hungarian Army"]
+  },
+  {
+    "sample_id": "hotpotqa-test-1677",
+    "dataset": "hotpotqa",
+    "question": "What episode of South Park was the episode that aired in May before Funnybot?",
+    "reference_answer": "146th",
+    "answer_aliases": ["146th"]
+  },
+  {
+    "sample_id": "hotpotqa-test-173",
+    "dataset": "hotpotqa",
+    "question": "Which songwriting duo composed music for \"La La Land\", and created lyrics for \"A Christmas Story: The Musical\"?",
+    "reference_answer": "Pasek & Paul",
+    "answer_aliases": ["Pasek & Paul"]
+  },
+  {
+    "sample_id": "hotpotqa-test-1815",
+    "dataset": "hotpotqa",
+    "question": "Where is the English punk rock band which Howard Devoto is the original singer of formed?",
+    "reference_answer": "in Bolton",
+    "answer_aliases": ["in Bolton"]
+  },
+  {
+    "sample_id": "hotpotqa-test-1836",
+    "dataset": "hotpotqa",
+    "question": "What country of origin does Jerry Barrett and Florence Nightingale have in common?",
+    "reference_answer": "English",
+    "answer_aliases": ["English"]
+  },
+  {
+    "sample_id": "hotpotqa-test-190",
+    "dataset": "hotpotqa",
+    "question": "Joe Walker played for which team that ends their regular season with the Civil War rivalry game?",
+    "reference_answer": "Oregon Ducks football",
+    "answer_aliases": ["Oregon Ducks football"]
+  },
+  {
+    "sample_id": "hotpotqa-test-1958",
+    "dataset": "hotpotqa",
+    "question": "Why does the City of Boston get their christmas tree from Ainslee Glen Nova Scotia?",
+    "reference_answer": "for their assistance after the 1917 Halifax Explosion",
+    "answer_aliases": ["for their assistance after the 1917 Halifax Explosion"]
+  }
+]

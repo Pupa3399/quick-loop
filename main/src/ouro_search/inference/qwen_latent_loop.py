@@ -50,6 +50,10 @@ class LatentLoopGeneration:
     text: str
     cache_mode: str = LATEST_DEPTH_KV
     records: list[LatentLoopTokenRecord] = field(default_factory=list)
+    temperature: float = 0.0
+    top_p: float = 1.0
+    seed: int | None = None
+    stop_reason: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -173,6 +177,38 @@ class QwenLatentLoopEngine:
                 f"depth must be between 1 and {self.max_supported_depth} for this backend"
             )
 
+    @staticmethod
+    def _validate_sampling(temperature: float, top_p: float) -> None:
+        if temperature < 0:
+            raise ValueError("temperature cannot be negative")
+        if not 0 < top_p <= 1:
+            raise ValueError("top_p must be in (0, 1]")
+
+    @staticmethod
+    def _select_token(
+        logits: Tensor,
+        *,
+        temperature: float,
+        top_p: float,
+        generator: torch.Generator | None,
+    ) -> Tensor:
+        if temperature == 0:
+            return torch.argmax(logits, dim=-1)
+
+        scaled_logits = logits.float() / temperature
+        sorted_logits, sorted_indices = torch.sort(scaled_logits, dim=-1, descending=True)
+        sorted_probabilities = torch.softmax(sorted_logits, dim=-1)
+        cumulative_probabilities = torch.cumsum(sorted_probabilities, dim=-1)
+        remove = cumulative_probabilities - sorted_probabilities >= top_p
+        sorted_probabilities = sorted_probabilities.masked_fill(remove, 0.0)
+        sorted_probabilities /= sorted_probabilities.sum(dim=-1, keepdim=True)
+        sampled_rank = torch.multinomial(
+            sorted_probabilities,
+            num_samples=1,
+            generator=generator,
+        )
+        return sorted_indices.gather(-1, sampled_rank).squeeze(-1)
+
     def build_soft_feedback(self, logits: Tensor) -> SoftFeedback:
         """Project the FP32 top-100 distribution through ``embed_tokens.weight``."""
         if logits.ndim != 2:
@@ -238,14 +274,59 @@ class QwenLatentLoopEngine:
         if state.current_input_ids.shape != (1, 1):
             raise RuntimeError("current_input_ids must have shape [1, 1]")
 
+    @torch.inference_mode()
+    def append_visible_tokens(self, state: LatentLoopState, token_ids: Tensor) -> None:
+        """Append external visible tokens without rebuilding or discarding latent-loop KV.
+
+        ``state.current_input_ids`` is the last model-generated token and has not yet been
+        cached. It is cached together with all appended tokens except the final one. The final
+        appended token becomes the next generation input. Existing highest-depth cache entries
+        are preserved unchanged.
+        """
+        self._assert_state_invariant(state)
+        if token_ids.ndim == 1:
+            token_ids = token_ids.unsqueeze(0)
+        if token_ids.ndim != 2 or token_ids.shape[0] != 1 or token_ids.shape[1] < 1:
+            raise ValueError("token_ids must have shape [1, sequence] with sequence >= 1")
+        token_ids = token_ids.to(device=self.device, dtype=torch.long)
+
+        appended_length = token_ids.shape[1]
+        tokens_to_cache = torch.cat((state.current_input_ids, token_ids[:, :-1]), dim=1)
+        start = state.logical_position
+        end = start + appended_length
+        positions = torch.arange(start, end, device=self.device)
+        outputs = self.model(
+            input_ids=tokens_to_cache,
+            attention_mask=torch.ones((1, end), dtype=torch.long, device=self.device),
+            position_ids=positions.unsqueeze(0),
+            cache_position=positions,
+            past_key_values=state.past_key_values,
+            use_cache=True,
+            logits_to_keep=1,
+            return_dict=True,
+        )
+        state.past_key_values = outputs.past_key_values
+        state.current_input_ids = token_ids[:, -1:]
+        state.logical_position = end
+        self._assert_state_invariant(state)
+
     def _synchronize(self) -> None:
         if self.device.type == "cuda":
             torch.cuda.synchronize(self.device)
 
     @torch.inference_mode()
-    def step(self, state: LatentLoopState, *, depth: int = 1) -> LatentLoopTokenRecord:
+    def step(
+        self,
+        state: LatentLoopState,
+        *,
+        depth: int = 1,
+        temperature: float = 0.0,
+        top_p: float = 1.0,
+        generator: torch.Generator | None = None,
+    ) -> LatentLoopTokenRecord:
         """Generate one token and retain only its producer position's highest-depth KV."""
         self._validate_depth(depth)
+        self._validate_sampling(temperature, top_p)
         self._assert_state_invariant(state)
         self._synchronize()
         started = time.perf_counter()
@@ -287,7 +368,12 @@ class QwenLatentLoopEngine:
                 next_inputs_embeds = feedback.embedding.unsqueeze(1)
 
         # There is deliberately no z1 + z2 residual: the deepest logits win directly.
-        final_token = torch.argmax(depth_logits[-1], dim=-1)
+        final_token = self._select_token(
+            depth_logits[-1],
+            temperature=temperature,
+            top_p=top_p,
+            generator=generator,
+        )
         r1_top1 = int(torch.argmax(depth_logits[0], dim=-1).item())
         r2_top1 = (
             int(torch.argmax(depth_logits[1], dim=-1).item()) if len(depth_logits) >= 2 else None
@@ -338,10 +424,15 @@ class QwenLatentLoopEngine:
         depth_by_token: Mapping[int, int] | None = None,
         eos_token_id: int | None = None,
         prompt: str | None = None,
+        temperature: float = 0.0,
+        top_p: float = 1.0,
+        seed: int | None = None,
+        stop_sequences: tuple[str, ...] = (),
     ) -> LatentLoopGeneration:
         if max_new_tokens < 1:
             raise ValueError("max_new_tokens must be positive")
         self._validate_depth(depth)
+        self._validate_sampling(temperature, top_p)
         if depth_by_token:
             invalid_indices = [index for index in depth_by_token if index < 0]
             if invalid_indices:
@@ -350,18 +441,43 @@ class QwenLatentLoopEngine:
                 self._validate_depth(selected_depth)
 
         state = self.prefill(input_ids)
+        generator = None
+        if temperature > 0 and seed is not None:
+            generator = torch.Generator(device=self.device)
+            generator.manual_seed(seed)
         records: list[LatentLoopTokenRecord] = []
         stop_token_id = self.tokenizer.eos_token_id if eos_token_id is None else eos_token_id
+        stop_reason: str | None = None
         for token_index in range(max_new_tokens):
             selected_depth = self._depth_for_token(
                 token_index,
                 depth=depth,
                 depth_by_token=depth_by_token,
             )
-            record = self.step(state, depth=selected_depth)
+            record = self.step(
+                state,
+                depth=selected_depth,
+                temperature=temperature,
+                top_p=top_p,
+                generator=generator,
+            )
             records.append(record)
             if stop_token_id is not None and record.token_id == stop_token_id:
+                stop_reason = "eos"
                 break
+            if stop_sequences:
+                current_text = self.tokenizer.decode(
+                    state.generated_token_ids,
+                    skip_special_tokens=True,
+                    clean_up_tokenization_spaces=False,
+                )
+                matched_stop = next(
+                    (value for value in stop_sequences if value in current_text),
+                    None,
+                )
+                if matched_stop is not None:
+                    stop_reason = matched_stop
+                    break
 
         generated_ids = list(state.generated_token_ids)
         text = self.tokenizer.decode(generated_ids, skip_special_tokens=True)
@@ -371,6 +487,10 @@ class QwenLatentLoopEngine:
             token_ids=generated_ids,
             text=text,
             records=records,
+            temperature=temperature,
+            top_p=top_p,
+            seed=seed,
+            stop_reason=stop_reason,
         )
 
     def generate(
@@ -380,6 +500,10 @@ class QwenLatentLoopEngine:
         max_new_tokens: int,
         depth: int = 1,
         depth_by_token: Mapping[int, int] | None = None,
+        temperature: float = 0.0,
+        top_p: float = 1.0,
+        seed: int | None = None,
+        stop_sequences: tuple[str, ...] = (),
     ) -> LatentLoopGeneration:
         encoded = self.tokenizer(prompt, return_tensors="pt")
         return self.generate_ids(
@@ -388,4 +512,8 @@ class QwenLatentLoopEngine:
             depth=depth,
             depth_by_token=depth_by_token,
             prompt=prompt,
+            temperature=temperature,
+            top_p=top_p,
+            seed=seed,
+            stop_sequences=stop_sequences,
         )

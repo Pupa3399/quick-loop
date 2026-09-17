@@ -70,24 +70,37 @@ bash main/scripts/launch_mock_retriever.sh
 
 ## Prompt 与轨迹
 
-共享 Agent 状态机支持 `search_r1` 和 `hermes` Prompt Profile，不复制 Agent 主流程。
-协议设计见 [main/docs/prompt_profiles.md](main/docs/prompt_profiles.md)。默认轨迹写入
+项目明确区分两条执行路径：共享 Agent 状态机继续支持 `search_r1` 和 `hermes`
+Prompt Profile；正式 Search GRPO 与后续 loop intervention 默认使用独立的 Search-R1
+v0.2 官方 rollout 路径。协议设计见
+[main/docs/prompt_profiles.md](main/docs/prompt_profiles.md)。默认轨迹写入
 `main/data/trajectories/`；训练专用轨迹写入 `main/data/trajectories/search_grpo/`。
 
 ## Search GRPO 实验
 
 Search GRPO 的执行代码、专用配置和 veRL patch 集中在
-`main/eval/search_grpo/`。外部 veRL 源码安装到 `.venv/src/verl/`：
+`main/eval/search_grpo/`。主实验模型是 Search-R1 官方发布的 Qwen2.5-3B/7B GRPO v0.2
+权重，默认选择 3B；Ouro 已移出默认路径，只保留为显式可选配置。外部 veRL 源码安装到
+`.venv/src/verl/`：
+
+- `configs/search_r1/v0_2.yaml`：固定 Search-R1 commit 上的官方 baseline；
+- `configs/search_r1/local_override.yaml`：当前服务器和新版 veRL 的共享必要差异；
+- `main/eval/search_grpo/config.yaml`：默认组合以上两份配置，并选择官方 v0.2 AgentLoop。
 
 ```bash
 bash main/eval/search_grpo/install.sh
-bash main/eval/search_grpo/run.sh 1
-bash main/eval/search_grpo/run.sh 5
-bash main/eval/search_grpo/run.sh 20
+bash main/eval/search_grpo/run.sh 1 searchr1_3b
+bash main/eval/search_grpo/run.sh 1 searchr1_7b
 ```
 
-训练 checkpoint 写入 `main/checkpoints/search_grpo/`，轨迹写入
-`main/data/trajectories/search_grpo/`，实验日志写入 `main/eval/search_grpo/results/`。
+仅在需要恢复 Ouro 实验时显式运行：
+
+```bash
+bash main/eval/search_grpo/run.sh 1 ouro_r3
+```
+
+训练 checkpoint、轨迹和日志都会继续按 `searchr1_3b`、`searchr1_7b`、`ouro_r3`
+分目录，避免模型之间交叉恢复或混写结果。
 运行脚本会检查 Retriever 健康状态及目标 GPU 空闲显存，不会主动占用已有任务的 GPU。
 
 ## 项目结构
@@ -123,5 +136,4 @@ uv lock --check
 uv run ruff check .
 ```
 
-`main/tests/` 当前按上一阶段清理要求保持为空；新的工程验证应按独立验证项目放入该目录，
-正式 benchmark 则放入 `main/eval/`。
+新的工程验证按独立验证项目放入 `main/tests/`，正式 benchmark 则放入 `main/eval/`。

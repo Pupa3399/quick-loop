@@ -1,0 +1,29 @@
+# Current-server and current-framework differences from Search-R1 v0.2.
+data:
+  train_files: main/data/searchr1/train.parquet
+  val_files: main/data/searchr1/test.parquet
+
+retriever:
+  url: http://127.0.0.1:8000/search
+  index_path: main/datasets/wiki18/e5_Flat.index
+  corpus_path: main/datasets/wiki18/wiki-18.jsonl
+  encoder_path: main/models/huggingface
+  gpu_ids: [0]
+  faiss_gpu_count: 1
+  faiss_use_float16: false
+
+runtime:
+  python: "3.10"
+  pytorch: 2.7.1+cu126
+  vllm: 0.10.0
+  vllm_engine: v1
+  verl_revision: ddd86f527a4af75095e4677b02b5aa272913a088
+  train_gpu_ids: [0, 1, 2, 3, 4, 5, 6, 7]
+
+# veRL 0.6 AgentLoop returns the complete interleaved response in one field.
+# Search-R1 v0.2 instead applies 500 per generation and caps the accumulated
+# right side at max_prompt_length=4096. Reserve that official accumulated limit.
+framework_compatibility:
+  accumulated_response_length: 4096
+  rollout_mode: async
+  agent_loop_config_path: main/eval/search_grpo/agent_loop_search_r1_v0_2.yaml

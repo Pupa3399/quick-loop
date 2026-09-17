@@ -20,12 +20,19 @@ assistant 生成流；Hermes 则对包含 `assistant` 和 `tool` 消息的对话
 
 ## Search-R1 协议
 
-该实现遵循官方
+这里的 `search_r1` Profile 是为零样本协议比较和通用 AgentRunner 保留的兼容实现，遵循官方
 [Search-R1 推理代码](https://github.com/PeterGriffinJin/Search-R1/blob/main/infer.py)：
 保留原始用户指令；模型 action 使用 `<think>`、`<search>` 和 `<answer>`；每次检索结果
 都以 `<information>...documents...</information>` 追加到同一条生成流中。官方
 `Doc N(Title: ...) ...` 段落渲染格式也保持不变。配置中的最多 4 次 Search 安全上限
 由 prompt 外部的状态机控制。
+
+它不是正式主实验的 Search-R1 v0.2 rollout。正式主实验使用独立的
+`SearchR1V02AgentLoop`，严格采用 v0.2 训练代码的 observation 边界、strict parser、
+invalid-action recovery、生成后裁剪、rolling context 和连续 RNG 规则。对应官方配置在
+`configs/search_r1/v0_2.yaml`，当前服务器差异在
+`configs/search_r1/local_override.yaml`。两条路径并存，避免通用 Profile 的容错语义影响
+正式 baseline。
 
 ## Hermes 协议
 

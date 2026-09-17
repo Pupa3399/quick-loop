@@ -1,0 +1,12 @@
+- name: search_r1_v0_2_official
+  _target_: ouro_search.verl.search_r1_v0_2_agent_loop.SearchR1V02AgentLoop
+  retriever_url: http://127.0.0.1:8000/search
+  top_k: 3
+  max_turns: 4
+  max_start_length: 2048
+  max_prompt_length: 4096
+  max_response_length: 500
+  max_obs_length: 500
+  max_accumulated_response_length: 4096
+  trajectory_dir: ${oc.env:SEARCH_GRPO_TRAJECTORY_DIR,main/data/trajectories/search_grpo/searchr1_3b}
+  require_official_prompt: true

@@ -1,0 +1,21 @@
+family: ouro
+display_name: Ouro-2.6B-Thinking R3
+path: main/models/vllm-ouro-r3
+revision: f1edd81e7ac41355db670500ceaf204e0f73af68
+dtype: bfloat16
+trust_remote_code: true
+override_config:
+  total_ut_steps: 3
+  attn_implementation: sdpa
+use_remove_padding: false
+external_lib: ouro_search.verl.external_libs
+max_model_len: 7096
+enforce_eager: true
+attention_backend: FLASH_ATTN
+ppo_micro_batch_size_per_gpu: 8
+log_prob_micro_batch_size_per_gpu: 8
+experiment_name: ouro-r3-searchr1-v0.2-official-rollout
+checkpoint_dir: main/checkpoints/search_grpo/ouro_r3
+trajectory_dir: main/data/trajectories/search_grpo/ouro_r3
+profile_dir: main/eval/search_grpo/results/ouro_r3/profiles
+requires_ouro_plugin: true

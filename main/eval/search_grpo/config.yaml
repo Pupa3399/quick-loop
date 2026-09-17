@@ -1,18 +1,24 @@
 hydra:
   searchpath:
     - file://.venv/src/verl/verl/trainer/config
+    - file://configs
 
 defaults:
   - ppo_trainer
+  - search_r1@search_r1_baseline: v0_2
+  - search_r1@local_override: local_override
+  - experiment_model: searchr1_3b
   - _self_
 
 data:
-  train_files: main/data/searchr1/train.parquet
-  val_files: main/data/searchr1/test.parquet
-  train_batch_size: 512
-  val_batch_size: 256
-  max_prompt_length: 4096
-  max_response_length: 3000
+  train_files: ${local_override.data.train_files}
+  val_files: ${local_override.data.val_files}
+  train_batch_size: ${search_r1_baseline.training.train_batch_size}
+  val_batch_size: ${search_r1_baseline.training.val_batch_size}
+  max_prompt_length: ${search_r1_baseline.rollout.max_prompt_length}
+  # veRL 0.6 stores the complete interleaved rollout in one response field.
+  # Each individual generation remains capped at the official 500 tokens.
+  max_response_length: ${local_override.framework_compatibility.accumulated_response_length}
   filter_overlong_prompts: true
   truncation: error
   return_raw_chat: true
@@ -20,51 +26,48 @@ data:
 actor_rollout_ref:
   hybrid_engine: true
   model:
-    # Prepared locally from the immutable HF snapshot. Its effective 144-layer
-    # metadata allocates an independent KV slot for every one of 48 x R3 calls.
-    path: main/models/vllm-ouro-r3
-    trust_remote_code: true
-    override_config:
-      total_ut_steps: 3
-      attn_implementation: sdpa
+    path: ${experiment_model.path}
+    trust_remote_code: ${experiment_model.trust_remote_code}
+    override_config: ${experiment_model.override_config}
     enable_gradient_checkpointing: true
-    use_remove_padding: false
-    external_lib: ouro_search.verl.external_libs
+    use_remove_padding: ${experiment_model.use_remove_padding}
+    external_lib: ${experiment_model.external_lib}
   actor:
     optim:
-      lr: 5.0e-7
-      lr_warmup_steps_ratio: 0.285
-    ppo_mini_batch_size: 256
-    ppo_micro_batch_size_per_gpu: 8
-    use_kl_loss: true
-    kl_loss_coef: 0.001
-    kl_loss_type: low_var_kl
-    entropy_coeff: 0.0
+      lr: ${search_r1_baseline.training.learning_rate}
+      lr_warmup_steps_ratio: ${search_r1_baseline.training.lr_warmup_steps_ratio}
+    ppo_mini_batch_size: ${search_r1_baseline.training.ppo_mini_batch_size}
+    ppo_micro_batch_size_per_gpu: ${experiment_model.ppo_micro_batch_size_per_gpu}
+    use_kl_loss: ${search_r1_baseline.training.use_kl_loss}
+    kl_loss_coef: ${search_r1_baseline.training.kl_loss_coef}
+    kl_loss_type: ${search_r1_baseline.training.kl_loss_type}
+    entropy_coeff: ${search_r1_baseline.training.entropy_coeff}
     fsdp_config:
       param_offload: true
       optimizer_offload: true
   rollout:
     name: vllm
-    mode: async
-    dtype: bfloat16
-    n: 5
-    temperature: 1.0
-    top_p: 1.0
-    tensor_model_parallel_size: 1
-    gpu_memory_utilization: 0.6
-    max_model_len: 7096
-    log_prob_micro_batch_size_per_gpu: 8
+    mode: ${local_override.framework_compatibility.rollout_mode}
+    dtype: ${experiment_model.dtype}
+    n: ${search_r1_baseline.rollout.n_agent}
+    temperature: ${search_r1_baseline.rollout.temperature}
+    top_p: ${search_r1_baseline.rollout.top_p}
+    tensor_model_parallel_size: ${search_r1_baseline.training.tensor_model_parallel_size}
+    gpu_memory_utilization: ${search_r1_baseline.training.gpu_memory_utilization}
+    max_model_len: ${experiment_model.max_model_len}
+    enforce_eager: ${experiment_model.enforce_eager}
+    log_prob_micro_batch_size_per_gpu: ${experiment_model.log_prob_micro_batch_size_per_gpu}
     calculate_log_probs: true
     agent:
-      default_agent_loop: ouro_search_r1
-      agent_loop_config_path: main/eval/search_grpo/agent_loop_r3.yaml
+      default_agent_loop: search_r1_v0_2_official
+      agent_loop_config_path: ${local_override.framework_compatibility.agent_loop_config_path}
   ref:
-    log_prob_micro_batch_size_per_gpu: 8
+    log_prob_micro_batch_size_per_gpu: ${experiment_model.log_prob_micro_batch_size_per_gpu}
     fsdp_config:
       param_offload: true
 
 algorithm:
-  adv_estimator: grpo
+  adv_estimator: ${search_r1_baseline.training.adv_estimator}
   norm_adv_by_std_in_grpo: true
   use_kl_in_reward: false
 
@@ -75,14 +78,14 @@ custom_reward_function:
 trainer:
   logger: [console, wandb]
   project_name: ouro-search
-  experiment_name: ouro-r3-searchr1-grpo
-  n_gpus_per_node: 8
+  experiment_name: ${experiment_model.experiment_name}
+  n_gpus_per_node: ${search_r1_baseline.training.n_gpus_per_node}
   nnodes: 1
-  save_freq: 100
-  test_freq: 100
-  total_training_steps: 1005
-  default_local_dir: main/checkpoints/search_grpo/grpo-r3
-  rollout_data_dir: main/data/trajectories/search_grpo
+  save_freq: ${search_r1_baseline.training.save_freq}
+  test_freq: ${search_r1_baseline.training.test_freq}
+  total_training_steps: ${search_r1_baseline.training.total_training_steps}
+  default_local_dir: ${experiment_model.checkpoint_dir}
+  rollout_data_dir: ${experiment_model.trajectory_dir}
 
 global_profiler:
-  save_path: main/eval/search_grpo/results/profiles
+  save_path: ${experiment_model.profile_dir}

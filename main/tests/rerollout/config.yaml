@@ -1,0 +1,36 @@
+experiment_name: searchr1_qwen3b_rerollout
+input_file: main/data/qwen_prefilt/search_r1_qwen3b_decision_turns_human_20.jsonl
+searchr1_data_file: main/data/searchr1/train.parquet
+results_file: main/tests/rerollout/results/trajectories.json
+summary_file: main/tests/rerollout/results/summary.json
+
+model:
+  path: main/models/searchr1/searchr1-qwen2.5-3b-grpo-v0.2
+  dtype: bfloat16
+  trust_remote_code: false
+  max_model_len: 7096
+  gpu_memory_utilization: 0.4
+  tensor_parallel_size: 1
+  enforce_eager: true
+
+sampling:
+  trajectories_per_sample: 4
+  base_seed: 42
+  temperature: 1.0
+  top_p: 1.0
+  max_generation_tokens: 500
+  max_response_tokens: 3000
+
+agent:
+  max_search_actions: 4
+  max_information_tokens: 500
+  stop_sequences:
+    - "</search>"
+    - "</answer>"
+
+retriever:
+  url: http://127.0.0.1:8000
+  top_k: 3
+  timeout_seconds: 120.0
+  require_gpu_faiss: true
+  expected_index_size: 21015324

@@ -3,7 +3,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from ouro_search.agent.profiles.search_r1 import SEARCH_R1_PROMPT
+from ouro_search.agent.search_r1_v0_2 import SEARCH_R1_V0_2_PROMPT
+
+SEARCH_R1_PROMPT = SEARCH_R1_V0_2_PROMPT
 
 
 def _aliases(example: Mapping[str, Any]) -> list[str]:

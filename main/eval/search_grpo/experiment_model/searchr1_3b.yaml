@@ -1,0 +1,19 @@
+family: search_r1
+display_name: Search-R1 Qwen2.5-3B GRPO v0.2
+path: main/models/searchr1/searchr1-qwen2.5-3b-grpo-v0.2
+revision: 7ff32234abe1e1bf1dbbbf3a1385686b52ecfea2
+dtype: bfloat16
+trust_remote_code: false
+override_config: {}
+use_remove_padding: true
+external_lib: null
+max_model_len: 7096
+enforce_eager: false
+attention_backend: FLASH_ATTN
+ppo_micro_batch_size_per_gpu: 8
+log_prob_micro_batch_size_per_gpu: 16
+experiment_name: searchr1-qwen2.5-3b-v0.2-official-rollout
+checkpoint_dir: main/checkpoints/search_grpo/searchr1_3b
+trajectory_dir: main/data/trajectories/search_grpo/searchr1_3b
+profile_dir: main/eval/search_grpo/results/searchr1_3b/profiles
+requires_ouro_plugin: false

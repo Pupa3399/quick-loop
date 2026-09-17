@@ -1,0 +1,79 @@
+{
+  "experiment": "loop_pretest_h_residual_no_added_newlines",
+  "input_file": "main/data/qwen_prefilt/search_r1_qwen3b_decision_turns_human_20.jsonl",
+  "model": {
+    "path": "main/models/searchr1/searchr1-qwen2.5-3b-grpo-v0.2",
+    "dtype": "bfloat16",
+    "device": "cuda:0",
+    "local_files_only": true,
+    "attention_backend": "sdpa",
+    "alpha": 0.5,
+    "rms_epsilon": 1e-06
+  },
+  "retriever_health": {
+    "status": "ok",
+    "index_size": 21015324,
+    "index_type": "GpuIndexFlat",
+    "faiss_gpu": true,
+    "faiss_index_device": "cuda:0",
+    "faiss_index_precision": "float32",
+    "faiss_gpu_memory_bytes": 66270003200
+  },
+  "sampling": {
+    "trajectories_per_depth": 4,
+    "depths": [
+      1,
+      2
+    ],
+    "base_seed": 42,
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "max_new_tokens_per_turn": 500,
+    "max_response_tokens": 3000
+  },
+  "prefix_whitespace_mode": "no_added_newlines",
+  "r1": {
+    "trajectory_count": 80,
+    "sample_count": 20,
+    "target_format_valid_rate": 0.0,
+    "target_valid_action_rate": 0.075,
+    "target_search_action_rate": 0.0,
+    "answer_rate": 0.075,
+    "em": 0.0125,
+    "category_em": {
+      "over_search": 0.025,
+      "search_stagnation": 0.0
+    },
+    "average_agent_turns": 2.0,
+    "average_generated_agent_turns": 1.0,
+    "average_search_turns": 1.0,
+    "retriever_invocations": 0,
+    "average_target_tokens": 1.95,
+    "termination_reasons": {
+      "answer": 6,
+      "unparseable_output": 74
+    }
+  },
+  "r2": {
+    "trajectory_count": 80,
+    "sample_count": 20,
+    "target_format_valid_rate": 0.0,
+    "target_valid_action_rate": 0.025,
+    "target_search_action_rate": 0.0,
+    "answer_rate": 0.025,
+    "em": 0.0,
+    "category_em": {
+      "over_search": 0.0,
+      "search_stagnation": 0.0
+    },
+    "average_agent_turns": 2.0,
+    "average_generated_agent_turns": 1.0,
+    "average_search_turns": 1.0,
+    "retriever_invocations": 0,
+    "average_target_tokens": 1.6625,
+    "termination_reasons": {
+      "answer": 2,
+      "unparseable_output": 78
+    }
+  }
+}
